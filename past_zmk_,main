@@ -1,0 +1,195 @@
+📘 固定ページ：ergo_BLE - ZMK環境構築とビルド履歴
+
+🧭 プロジェクト概要
+
+プロジェクト名: ergo_BLE
+
+構成対象: BLE対応の分割キーボード（左側）
+
+操作役: Mitsuharu（オペレーター）
+
+指揮・進行管理: Copilot（構成・支援）
+
+🛠️ 環境構築（ZMK Firmware）
+
+📦 必須ツール
+
+Python 3.10（PATH衝突やエイリアス注意）
+
+Zephyr SDK（SDKパスの通し方重要）
+
+west（SDK同梱）
+
+🔁 構築ステップ
+
+# west初期化
+py -3.10 -m west init -l .
+
+# モジュール更新
+py -3.10 -m west update
+
+# Zephyr環境エクスポート
+py -3.10 -m west zephyr-export
+
+# ZIP展開の場合は .gitignore の退避が必要（Move-Item で回避）
+
+# modules/zmk に Git clone で置き直しも検討（west認識対策）
+
+シールド構成：ergo_ble_left
+
+📁 config/boards/shields/ergo_ble_left に以下の構成ファイル：
+
+ファイル名
+
+用途
+
+shield.dts
+
+splitタイプとbindings定義（type = left）
+
+ergo_ble.overlay
+
+devicetreeオーバーレイ定義
+
+ergo_ble.conf
+
+BLE・電源設定（現在は空 or後日拡張）
+
+ergo_ble_left.keymap
+
+左側のキーマップ（3列×6キー）
+
+Kconfig
+
+カスタム設定用
+
+📁 任意フォルダ：keymap_assets
+
+フォルダ名
+
+用途
+
+keymap_assets
+
+編集前・テンプレ・バックアップ用の素材置き場
+
+🔨 ビルドコマンド（安定化済）
+
+py -3.10 -m west build -s app -b nice_nano_v2 -- -DSHIELD=ergo_ble_left
+
+# 環境変数の登録
+$env:ZEPHYR_BASE="C:\\path\\to\\zephyr"
+
+# ZEPHYR_BASE は Zephyr リポジトリのルート
+# ZEPHYR_SDK_INSTALL_DIR は SDK のインストール先
+
+# ビルド前のキャッシュ削除
+Remove-Item build -Recurse -Force
+Remove-Item .west -Recurse -Force
+Remove-Item .modules -Recurse -Force
+
+# ビルド直前チェックポイント
+Get-ChildItem -Path config/boards/shields/ergo_ble_left
+echo $env:ZEPHYR_BASE
+where python
+py -3.10 --version
+
+🛠️ west再構成手順
+
+manifest init失敗時
+
+mkdir C:\\Users\\mitsuharu\\github\\zmk-config
+cd C:\\Users\\mitsuharu\\github\\zmk-config
+py -3.10 -m west init zmk-config --manifest-url https://github.com/zmkfirmware/zmk --manifest-rev main
+cd zmk-config
+py -3.10 -m west update
+py -3.10 -m west zephyr-export
+
+ZEPHYR_BASE環境変数の影響
+
+Remove-Item Env:\\ZEPHYR_BASE
+py -3.10 -m west init -m https://github.com/zmkfirmware/zmk-manifest --mr main .
+py -3.10 -m west update
+py -3.10 -m west zephyr-export
+
+失敗パターンの追加
+
+Remove-Item .west -Recurse -Force
+py -3.10 -m west init -m https://github.com/zmkfirmware/zmk-manifest --mr main .
+
+🧩 2025/07/18の不具合記録と回避策
+
+west build 未定義の原因と対策
+
+west update は成功しても、west build 実行時に "unknown command" エラーが出る。
+
+原因: modules/zmk/scripts/west_commands が west に認識されていない。
+
+.west の誤生成と workspaceトップの固定法
+
+zmk-keyboard に .git を配置して workspaceトップを明示する。
+
+親ディレクトリに .git や .west が存在しないことを確認する。
+
+west init -l . を zmk-keyboard で実行し、.west/config がその中に生成されることを確認。
+
+ZEPHYR_BASE による初期化失敗の回避策
+
+Remove-Item Env:\ZEPHYR_BASE を実行して環境変数を解除。
+
+その後 west init を再実行。
+
+再発防止策
+
+環境変数の確認と管理: ZEPHYR_BASE や ZEPHYR_SDK_INSTALL_DIR の設定を定期的に確認。
+
+.west フォルダの管理: 不要な .west フォルダが存在しないことを確認。
+
+manifest設定: west init 実行時に -m オプションを使用して、明示的に manifest のパスを指定。
+
+west commands の確認: modules/zmk/scripts/west_commands が正しく配置されていることを確認。
+
+定期的なバックアップ: zmk-keyboard フォルダ全体を定期的にバックアップ。
+
+📘 追加知見：west workspaceトップの強制固定法（manifest分離）
+
+west は .git よりも manifestの場所を優先して .west を生成することがある。
+
+manifestを別フォルダに分離することで workspaceトップを意図通りに固定できる。
+
+west init -m <manifest> を workspaceトップで実行することで .west をその中に生成できる。
+
+🧹 不要データの掃除手順
+
+1. 不要なフォルダの確認と削除
+
+# 不要なフォルダをリストアップ
+Get-ChildItem -Path C:\\Users\\mitsuharu\\github -Directory
+
+# 削除コマンド（確認後実行）
+Remove-Item -Path C:\\Users\\mitsuharu\\github\\<不要フォルダ名> -Recurse -Force
+
+2. .west フォルダの整理
+
+# 存在しない場合はスキップ
+if (Test-Path -Path .west) {
+    Remove-Item -Path .west -Recurse -Force
+}
+
+3. キャッシュクリア
+
+# ビルドキャッシュの削除
+Remove-Item -Path build -Recurse -Force
+
+# モジュールキャッシュの削除
+Remove-Item -Path .modules -Recurse -Force
+
+4. Copilotが生成した不要フォルダの削除
+
+# Copilotが生成したフォルダをリストアップ
+Get-ChildItem -Path C:\\Users\\mitsuharu\\github -Directory | Where-Object { $_.Name -match "^(zmk-manifest|zmk-config|modules\\\\zmk|build)$" }
+
+# 削除コマンド（確認後実行）
+Remove-Item -Path C:\\Users\\mitsuharu\\github\\<対象フォルダ名> -Recurse -Force
+
+この内容をもとに、次回の構成作業を進めていきましょう。
