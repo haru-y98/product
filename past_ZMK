@@ -1,0 +1,229 @@
+1🧭 プロジェクト概要
+
+プロジェクト名：ergo_BLE
+
+構成対象：BLE対応の分割キーボード（左側）
+
+操作役：Mitsuharu（オペレーター）
+
+指揮・進行管理：Copilot（構成・支援）
+
+🛠️ 環境構築（GitHub Actions）
+
+📦 必須ツール
+
+GitHubリポジトリ（zmk-config）
+
+ZMK公式テンプレート
+
+west（SDK同梱）
+
+🔁 構築ステップ
+
+公式テンプレートの取得
+
+mkdir C:\Users\mitsuharu\github\zmk-config
+cd C:\Users\mitsuharu\github\zmk-config
+py -3.10 -m west init zmk-config --manifest-url https://github.com/zmkfirmware/zmk
+cd zmk-config
+py -3.10 -m west update
+py -3.10 -m west zephyr-export
+
+GitHubリポジトリへのPush
+
+git init
+git remote add origin https://github.com/mitsuharu/zmk-config.git
+git add .
+git commit -m "Initial commit with ZMK official template"
+git push -u origin main
+
+GitHub Actionsの確認
+
+.github/workflows フォルダに公式テンプレートのActions設定が含まれていることを確認。
+
+Push後、Actionsが .uf2 ファイルを生成するか確認。
+
+Flashと動作確認
+
+生成された .uf2 ファイルをデバイスにFlash。
+
+BLE接続と基本動作を確認。
+
+🧩 2025/07/18の進捗記録
+
+GitHub Actionsの安定化
+
+成功条件: Actionsが .uf2 を生成し、デバイスが正常に動作すること。
+
+失敗時の対策: Actions設定の見直し、公式ドキュメントの再確認。
+
+修正されたGitHub Actionsワークフロー
+
+以下は修正されたGitHub Actionsのワークフローです：
+
+steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+         submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip git cmake ninja-build gperf ccache dfu-util device-tree-compiler wget
+          pip3 install west
+
+      - name: Init and update west
+        run: |
+          west init -m https://github.com/zmkfirmware/zmk
+          west update
+          west build -s zmk/app -b nice_nano -- -DSHIELD=ergo_ble_left
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: build/zephyr/*.uf2
+
+🧯 解決策：ディレクトリを完全にリセット → 正しい構成で再初期化
+
+🔥 ① zmk-config フォルダを一度完全削除
+
+PowerShellで次のように実行します：
+
+Remove-Item -Recurse -Force C:\Users\mitsuharu\github\zmk-config
+
+💡 .west も .git もサブモジュールも含めて一掃します
+
+🆕 ② 改めて公式テンプレートで環境構築
+
+cd C:\Users\mitsuharu\github
+py -3.10 -m west init zmk-config --manifest-url https://github.com/zmkfirmware/zmk
+cd zmk-config
+py -3.10 -m west update
+
+💡 ここで zmk-config が west workspace になり、zmk/ や zephyr/ が取り込まれます
+
+🛠️ ③ ビルド確認（左側）
+
+py -3.10 -m west build -s app -b nice_nano -- -DSHIELD=ergo_ble_left
+
+🚀 ④ GitHubにPush（このあと）
+
+git init
+git remote add origin https://github.com/haru-y98/zmk-config.git
+git add .
+git commit -m "Initialize with ZMK official manifest"
+git push -u origin main
+
+💡 この状態なら GitHub Actionsも west update → build → .uf2 生成が成功します
+
+🛠️ 必須構成：SHIELD ergo_ble_left の追加
+
+📁 必須フォルダ構成
+
+`` my-zmk/ └── config/ └── boards/ └── shields/ └── ergo_ble_left/ ├── shield.dts └── Kconfig
+
+
+### 🧩 `shield.dts` の中身（最低限）
+
+```dts
+#include "nice_nano.overlay"
+
+&kscan {
+    debounce-period-ms = <5>;
+};
+
+🧩 Kconfig（空でもOK）
+
+menu "ergo_ble_left Shield"
+endmenu
+
+🚀 設置後のビルドコマンド
+
+py -3.10 -m west build -s zmk/app -b nice_nano -- -DSHIELD=ergo_ble_left
+
+成功すれば build/zephyr/firmware.uf2 が出力されます
+
+🆕 これから行う ZMK公式テンプレ環境構築（2025/07/19）
+
+📁 作業ディレクトリの初期化
+
+Remove-Item -Recurse -Force C:\Users\mitsuharu\github\my-zmk.west
+
+💡 すでに壊れている .west を削除することで、manifest構成をリセットします。
+
+🧭 manifest指定で公式テンプレートを取得
+
+cd C:\Users\mitsuharu\github\my-zmk py -3.10 -m west init -m https://github.com/zmkfirmware/zmk-config
+
+💡 zmk-config は manifest 専用の公式テンプレート。※以前は誤って zmk を指定してエラーになっていた！
+
+🔁 サブモジュールの取得とSDK設定
+
+py -3.10 -m west update py -3.10 -m west zephyr-export
+
+💡 zmk/, zephyr/ などの必要パーツが取り込まれ、Zephyr SDKの環境変数も設定されます。
+
+🧩 SHIELD定義 ergo_ble_left の追加（最低限構成）
+
+my-zmk/ └── config/ └── boards/ └── shields/ └── ergo_ble_left/ ├── shield.dts └── Kconfig
+
+shield.dts（最低限）
+
+#include "nice_nano.overlay"
+
+&kscan { debounce-period-ms = <5>; };
+
+Kconfig（空でもOK）
+
+menu "ergo_ble_left Shield" endmenu
+
+🚀 ビルド実行（左側）
+
+py -3.10 -m west build -s zmk/app -b nice_nano -- -DSHIELD=ergo_ble_left
+
+💡 ビルド成功で build/zephyr/firmware.uf2 が生成されます→ デバイスへのFlashと動作確認へ進行可能！
+
+🛠️ 追加のトラブルシューティング（2025/07/19）
+
+❌ 現状の問題
+
+操作
+
+状態
+
+west init -m https://github.com/zmkfirmware/zmk
+
+❌ west.yml が存在しない → 初期化失敗
+
+west init -m https://github.com/zmkfirmware/zmk-config
+
+❌ 以前に失敗した .west が残っていて再初期化できず
+
+west build
+
+❌ west拡張コマンド未定義 → manifestの import失敗 or west.yml不在
+
+✅ 最短で復旧する公式推奨手順
+
+💡 ここでは「フォルダを一度完全削除 → zmk-config で初期化」が最も確実です。
+
+Remove-Item -Recurse -Force C:\Users\mitsuharu\github\my-zmk
+cd C:\Users\mitsuharu\github
+py -3.10 -m west init my-zmk --manifest-url https://github.com/zmkfirmware/zmk-config
+cd my-zmk
+py -3.10 -m west update
+py -3.10 -m west zephyr-export
+
+✅ この構成なら west build や zephyr-export などの拡張コマンドが正しく使えるようになります
+
+🔧 ビルド確認（左側）
+
+py -3.10 -m west build -s zmk/app -b nice_nano -- -DSHIELD=ergo_ble_left
+
+成功すると build/zephyr/firmware.uf2 が出力されるので、Flash に進めます！
+
+この修復案はこのページにも追記して反映可能です 📘 リビジョンとして残しておけば、次回以降落ちてもすぐ復元できます。
+
+続けましょうか？「完全初期化して、最短で公式テンプレ再構築」流れに入りますか？ 🔧🔥
