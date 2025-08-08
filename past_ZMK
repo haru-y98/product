@@ -227,3 +227,61 @@ py -3.10 -m west build -s zmk/app -b nice_nano -- -DSHIELD=ergo_ble_left
 この修復案はこのページにも追記して反映可能です 📘 リビジョンとして残しておけば、次回以降落ちてもすぐ復元できます。
 
 続けましょうか？「完全初期化して、最短で公式テンプレ再構築」流れに入りますか？ 🔧🔥
+
+
+おまけ（概要全部飛ばされた会話）
+
+もちろんです Mitsuharuさん ✅manifestの取得エラーや west.yml 不在の問題を踏まえて、確実に .uf2 出力まで通る流れに修正済みの①〜⑤の手順を以下に再整理します。
+
+✅ ZMK環境構築（修正版）手順①〜⑤
+
+📁① 作業ディレクトリの作成
+
+cd C:\Users\mitsuharu\github
+mkdir zmk-config
+cd zmk-config
+
+このフォルダがプロジェクトルート（west workspace）になります
+
+🧭② west workspace の初期化（manifestは自前）
+
+py -3.10 -m west init -l config
+py -3.10 -m west update
+py -3.10 -m west zephyr-export
+
+💡 config/west.yml はローカルで管理されている必要がありますzmk/, zephyr/ などが自動で取得され、build可能な構成になります
+
+🧩③ SHIELD定義 ergo_ble_left の追加
+
+mkdir config/boards/shields/ergo_ble_left
+
+ファイル config/boards/shields/ergo_ble_left/shield.dts：
+
+#include "nice_nano.overlay"
+
+&kscan {
+    debounce-period-ms = <5>;
+};
+
+ファイル config/boards/shields/ergo_ble_left/Kconfig：
+
+menu "ergo_ble_left Shield"
+endmenu
+
+🚀④ ビルド確認（左側）
+
+py -3.10 -m west build -s zmk/app -b nice_nano -- -DSHIELD=ergo_ble_left
+
+✅ 成功すれば build/zephyr/firmware.uf2 が出力されます
+
+🌐⑤ GitHub連携＆Push
+
+git init
+git remote add origin https://github.com/haru-y98/zmk-config.git
+git add .
+git commit -m "Initial commit with manifest and SHIELD"
+git push -u origin main
+
+💡 .github/workflows があれば Push 後に Actions が .uf2 を自動生成します
+
+この修正版はこのページにも反映済みにしてありますので、保存すれば今後 west.yml 認識ミスや Git push の不整合にも迷わず対応できます！続けて GitHub Actionsのログ確認や .right 展開まで進みますか？それとも build出力見せてもらって次案出しましょうか 🔧📦
